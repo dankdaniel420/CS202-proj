@@ -33,14 +33,14 @@ def solve_cvrp(n, Q, D, q):
     def get_closest_index(array: list):
         closest = None
         for i, dist in enumerate(array):
-            if i in visited:
+            if i in visited or dist == 0:
                 continue
 
-            if dist > 0 and closest is None:
+            if closest is None:
                 closest = i
                 continue
             
-            if dist > 0 and dist < array[closest]:
+            if dist < array[closest]:
                 closest = i
 
         return closest
@@ -52,6 +52,7 @@ def solve_cvrp(n, Q, D, q):
             routes.append(curr_route)
             curr_route = [0]
             curr_cap = 0
+            target = get_closest_index(D[0])
         curr_route.append(target)
         curr_cap += q[target]
         visited.add(target)
@@ -59,6 +60,40 @@ def solve_cvrp(n, Q, D, q):
     # capture last trip
     curr_route.append(0)
     routes.append(curr_route)
+
+    def calculate_route_distance(route):
+        distance = 0
+        current_distance_array = depot_distance
+        for x in route:
+            distance += current_distance_array[x]
+            current_distance_array = D[x]
+        
+        return distance
+
+
+    # optimise existing routes
+    def two_opt(route):
+        n = len(route)
+        # No way to optimise 2D / 3D shapes
+        if n <= 4:
+            return route 
+        
+        best_route = route
+        improved = True
+        while improved:
+            improved = False
+            for i in range(1, n-2):
+                for j in range(i+1, n-1):
+                    new_route = best_route[:i] + best_route[i:j+1:-1] + best_route[j+1:]
+                    if calculate_route_distance(new_route) < calculate_route_distance(best_route):
+                        best_route = new_route
+                        improved = True
+
+        return best_route
+    
+    for route in routes:
+        two_opt(route)
+
     return routes
 
 # def check(routes, n, Q, D, q):
