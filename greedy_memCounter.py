@@ -113,16 +113,107 @@ def savings_algorithm(n, Q, D, q):
     
     return final_routes
 
-def local_search(routes, n, Q, D, q, iterations=50):
-    """Improve routes with local search operations."""
+def local_search(routes, n, Q, D, q, iterations=100):  # Increased iterations
+    """Improve routes with more sophisticated local search operations."""
     best_routes = [route.copy() for route in routes]
     best_distance = calculate_total_distance(best_routes, D)
     
     current_routes = [route.copy() for route in routes]
     
     for _ in range(iterations):
-        # Choose a random improvement strategy
-        strategy = random.choice(['swap', 'relocate', '2-opt'])
+        # More advanced improvement strategies
+        strategies = [
+            'swap', 
+            'relocate', 
+            '2-opt', 
+            'cross-exchange',  # New strategy
+            'route-split'      # New strategy
+        ]
+        strategy = random.choice(strategies)
+        
+        if strategy == 'cross-exchange' and len(current_routes) > 1:
+            # Cross-exchange between two routes
+            route1_idx = random.randint(0, len(current_routes) - 1)
+            route2_idx = random.randint(0, len(current_routes) - 1)
+            while route2_idx == route1_idx:
+                route2_idx = random.randint(0, len(current_routes) - 1)
+            
+            route1 = current_routes[route1_idx].copy()
+            route2 = current_routes[route2_idx].copy()
+            
+            if len(route1) <= 3 or len(route2) <= 3:
+                continue
+            
+            # Choose random segments to exchange
+            start1 = random.randint(1, len(route1) - 2)
+            end1 = random.randint(start1, len(route1) - 2)
+            start2 = random.randint(1, len(route2) - 2)
+            end2 = random.randint(start2, len(route2) - 2)
+            
+            # Calculate new demands
+            new_demand1 = (sum(q[i] for i in route1 if i != 0) - 
+                           sum(q[i] for i in route1[start1:end1+1]) + 
+                           sum(q[i] for i in route2[start2:end2+1]))
+            
+            new_demand2 = (sum(q[i] for i in route2 if i != 0) - 
+                           sum(q[i] for i in route2[start2:end2+1]) + 
+                           sum(q[i] for i in route1[start1:end1+1]))
+            
+            # Check capacity constraints
+            if new_demand1 <= Q and new_demand2 <= Q:
+                # Perform cross-exchange
+                exchanged_route1 = (route1[:start1] + 
+                                    route2[start2:end2+1] + 
+                                    route1[end1+1:])
+                exchanged_route2 = (route2[:start2] + 
+                                    route1[start1:end1+1] + 
+                                    route2[end2+1:])
+                
+                new_routes = current_routes.copy()
+                new_routes[route1_idx] = exchanged_route1
+                new_routes[route2_idx] = exchanged_route2
+                
+                new_distance = calculate_total_distance(new_routes, D)
+                if new_distance < best_distance:
+                    best_routes = [route.copy() for route in new_routes]
+                    best_distance = new_distance
+                    current_routes = new_routes
+        
+        elif strategy == 'route-split' and len(current_routes) > 1:
+            # Try to split an overloaded route into two
+            for route_idx, route in enumerate(current_routes):
+                if len(route) <= 4:  # Need at least 2 customers to split
+                    continue
+                
+                # Find a splitting point that balances load
+                total_demand = sum(q[i] for i in route if i != 0)
+                current_demand = 0
+                split_index = 1
+                
+                for i in range(1, len(route) - 2):
+                    current_demand += q[route[i]]
+                    if current_demand > total_demand / 2:
+                        split_index = i + 1
+                        break
+                
+                # Create two new routes
+                new_route1 = route[:split_index+1]
+                new_route2 = route[split_index:] if len(route[split_index:]) > 3 else None
+                
+                if new_route2:
+                    new_routes = current_routes.copy()
+                    new_routes[route_idx] = new_route1
+                    new_routes.append(new_route2)
+                    
+                    new_distance = calculate_total_distance(new_routes, D)
+                    if new_distance < best_distance:
+                        best_routes = [route.copy() for route in new_routes]
+                        best_distance = new_distance
+                        current_routes = new_routes
+    
+    # Existing local search strategies remain the same...
+    # (previous swap, relocate, and 2-opt strategies)
+    
         
         if strategy == 'swap' and len(current_routes) > 1:
             # Swap customers between routes
