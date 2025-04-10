@@ -36,50 +36,39 @@ def read_input():
     
     return n, Q, D, q
 
-
-def get_closest_unvisited_index(distances, visited):
-    """Return the index of the nearest node not yet in visited."""
-    # distances: list of dists from current node to all nodes
-    return min(
-        (i for i in range(len(distances)) if i not in visited),
-        key=lambda i: distances[i]
-    )
-
-def solve_cvrp(n, Q, D, q):
-
+def calculate_distance(routes, D):
     """
-    Greedy nearest‑neighbor CVRP:
-    - Start at depot (0), repeatedly go to the closest unvisited customer
-    - If capacity would overflow, return to depot and start a new trip
+    Given a list of routes (each a list of node indices),
+    and distance matrix D, return the sum of all leg distances.
     """
-    routes = []
-    visited = set([0])
-    curr = 0
-    curr_capacity = 0
-    curr_route = [0]
+    total = 0
+    for route in routes:
+        # route is e.g. [0, 3, 5, 0]
+        for i in range(len(route)-1):
+            total += D[route[i]][route[i+1]]
+    return total
 
-    while len(visited) < n:
-        target = get_closest_unvisited_index(D[curr], visited)
-        # if adding target would exceed capacity, close out this route
-        if curr_capacity + q[target] > Q:
-            curr_route.append(0)       # return to depot
-            routes.append(curr_route)
-            # start a fresh trip
-            curr_route = [0]
-            curr_capacity = 0
-            curr = 0
-            continue
+def solve_cvrp(n, Q, D, q):   
+    # Base case, depot to each location and back
+    shortest_route = [[0, x, 0] for x in range(1, n)]
+    shortest_dist = sum(D[0]) * 2
 
-        # visit target
-        curr_route.append(target)
-        curr_capacity += q[target]
-        visited.add(target)
-        curr = target
+    for perm in itertools.permutations(n-1):
+        routes = []
+        curr, curr_capacity, curr_route = 0, 0, [0]
+        for target in perm:
+            if curr_capacity + q[target] > Q:
+                routes.append(curr_route + [0])
+                curr, curr_capacity, curr_route = 0, 0, [0]
+            curr_route.append(target)
+            curr_capacity += q[target]
+            curr = target
+        routes.append(curr_route + [0])  # capture last trip
 
-    # close final trip
-    curr_route.append(0)
-    routes.append(curr_route)
-    return routes
+        curr_dist = calculate_distance(routes)
+        if curr_dist < shortest_dist:
+            shortest_dist, shortest_route = curr_dist, routes
+
 
 def check(routes, n, Q, D, q):
     node_visited = []

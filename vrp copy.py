@@ -47,39 +47,49 @@ def get_closest_unvisited_index(distances, visited):
 
 def solve_cvrp(n, Q, D, q):
 
-    """
-    Greedy nearest‑neighbor CVRP:
-    - Start at depot (0), repeatedly go to the closest unvisited customer
-    - If capacity would overflow, return to depot and start a new trip
-    """
-    routes = []
-    visited = set([0])
-    curr = 0
-    curr_capacity = 0
-    curr_route = [0]
+    # Initialize each customer in its own route: depot → i → depot
+    routes = {}
+    route_demand = {}
+    route_of = {}
 
-    while len(visited) < n:
-        target = get_closest_unvisited_index(D[curr], visited)
-        # if adding target would exceed capacity, close out this route
-        if curr_capacity + q[target] > Q:
-            curr_route.append(0)       # return to depot
-            routes.append(curr_route)
-            # start a fresh trip
-            curr_route = [0]
-            curr_capacity = 0
-            curr = 0
-            continue
+    for i in range(1, n):
+        routes[i] = [0, i, 0]
+        route_demand[i] = q[i]
+        route_of[i] = i
 
-        # visit target
-        curr_route.append(target)
-        curr_capacity += q[target]
-        visited.add(target)
-        curr = target
+    # Compute savings for every pair (i, j), i<j:
+    # savings = (cost_depot→i + cost_depot→j − cost_i→j, i, j)
+    savings = [
+        (D[0][i] + D[0][j] - D[i][j], i, j)
+        for i in range(1, n)
+        for j in range(i+1, n)
+    ]
 
-    # close final trip
-    curr_route.append(0)
-    routes.append(curr_route)
-    return routes
+    # Sort savings in descending order of potential cost reduction
+    savings.sort(reverse=True, key=lambda x: x[0])
+
+
+    # Clarke–Wright Savings: Part 2 (Merge phase)
+
+    for saving, i, j in savings:
+        ri, rj = route_of[i], route_of[j]
+        # only consider if i and j are in different routes
+        if ri != rj:
+            # check i is at the end of its route and j at the start of its
+            if routes[ri][-2] == i and routes[rj][1] == j:
+                # ensure merging won’t exceed capacity
+                if route_demand[ri] + route_demand[rj] <= Q:
+                    # perform merge: drop the trailing depot of ri and leading depot of rj
+                    routes[ri] = routes[ri][:-1] + routes[rj][1:]
+                    # update demand
+                    route_demand[ri] += route_demand[rj]
+                    # reassign all nodes in rj to route ri
+                    for node in routes[rj][1:-1]:
+                        route_of[node] = ri
+                    # remove the old route
+                    del routes[rj]
+                    del route_demand[rj]
+
 
 def check(routes, n, Q, D, q):
     node_visited = []

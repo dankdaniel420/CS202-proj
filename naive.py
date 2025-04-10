@@ -36,50 +36,8 @@ def read_input():
     
     return n, Q, D, q
 
-
-def get_closest_unvisited_index(distances, visited):
-    """Return the index of the nearest node not yet in visited."""
-    # distances: list of dists from current node to all nodes
-    return min(
-        (i for i in range(len(distances)) if i not in visited),
-        key=lambda i: distances[i]
-    )
-
-def solve_cvrp(n, Q, D, q):
-
-    """
-    Greedy nearest‑neighbor CVRP:
-    - Start at depot (0), repeatedly go to the closest unvisited customer
-    - If capacity would overflow, return to depot and start a new trip
-    """
-    routes = []
-    visited = set([0])
-    curr = 0
-    curr_capacity = 0
-    curr_route = [0]
-
-    while len(visited) < n:
-        target = get_closest_unvisited_index(D[curr], visited)
-        # if adding target would exceed capacity, close out this route
-        if curr_capacity + q[target] > Q:
-            curr_route.append(0)       # return to depot
-            routes.append(curr_route)
-            # start a fresh trip
-            curr_route = [0]
-            curr_capacity = 0
-            curr = 0
-            continue
-
-        # visit target
-        curr_route.append(target)
-        curr_capacity += q[target]
-        visited.add(target)
-        curr = target
-
-    # close final trip
-    curr_route.append(0)
-    routes.append(curr_route)
-    return routes
+def solve_cvrp(n, Q, D, q):   
+    return [[0, x, 0] for x in range(1, n)]
 
 def check(routes, n, Q, D, q):
     node_visited = []
